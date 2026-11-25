@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>卡皮巴拉の溫泉 — 3渲2 動漫風 3D 互動場景</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body class="ui-hidden">
+  <div id="canvas-container"></div>
+
+  <div id="mood-toast" class="mood-toast" aria-live="polite"></div>
+
+  <nav class="control-dock ui-element" aria-label="場景互動控制">
+    <button id="btn-pet" class="anime-btn primary" type="button" title="摸摸卡皮巴拉">
+      <span class="btn-icon">💛</span>
+      <span class="btn-label">摸摸頭</span>
+    </button>
+
+    <button id="btn-time" class="anime-btn" type="button" title="切換早中晚時段">
+      <span class="btn-icon" id="time-icon">☀️</span>
+      <span class="btn-label" id="time-label">晨光溫泉</span>
+    </button>
+
+    <button id="btn-petals" class="anime-btn active" type="button" title="開關櫻花花瓣">
+      <span class="btn-icon">🌸</span>
+      <span class="btn-label">櫻花飄落</span>
+    </button>
+
+    <button id="btn-sound" class="anime-btn active" type="button" title="開關療癒音效">
+      <span class="btn-icon" id="sound-icon">🔊</span>
+      <span class="btn-label">音效</span>
+    </button>
+  </nav>
+
+  <button id="btn-toggle-ui" class="toggle-ui-btn" type="button" title="隱藏或顯示介面">
+    👁️ 顯示介面
+  </button>
+
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loading-card">
+      <div class="loading-yuzu">🍊</div>
+      <div class="loading-text">正在準備溫熱的柚子溫泉⋯</div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
