@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { globalToonUniforms, createAnimeSky } from './toonShader.js';
 import { createCapybara } from './capybara.js';
 import { createOnsenEnvironment } from './environment.js';
-import { TRANSLATIONS, detectInitialLanguage, saveLanguage } from './i18n.js';
+import { TRANSLATIONS, detectInitialLanguage, saveLanguage } from './i18n.js?v=2';
 
 // === 場景與渲染器初始化 ===
 const container = document.getElementById('canvas-container');
@@ -452,10 +452,11 @@ soundBtn.addEventListener('click', () => {
   if (soundEnabled) playChime('pet');
 });
 
-langBtn.addEventListener('click', () => {
+langBtn?.addEventListener('click', () => {
   const nextLang = currentLang === 'zh' ? 'en' : 'zh';
   saveLanguage(nextLang);
   applyLanguage(nextLang);
+  showToast(t().langSwitched);
 });
 
 toggleUiBtn.addEventListener('click', () => {

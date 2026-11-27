@@ -34,6 +34,7 @@ export const TRANSLATIONS = {
       `${isBaby ? '小卡皮巴拉' : '卡皮巴拉'}頭上的柚子疊太高掉進溫泉啦！重新疊起 🍊`,
     floatingYuzuSplash: '噗通！柚子在溫泉裡彈了一下 🍊',
     timeSwitched: (name, icon) => `已切換至「${name}」${icon}`,
+    langSwitched: '已切換至繁體中文 🌐',
   },
   en: {
     htmlLang: 'en',
@@ -67,6 +68,7 @@ export const TRANSLATIONS = {
       `Too tall! The yuzu tumbled into the bath—starting over for ${isBaby ? 'baby capybara' : 'capybara'} 🍊`,
     floatingYuzuSplash: 'Plop! A yuzu bounced in the water 🍊',
     timeSwitched: (name, icon) => `Switched to ${name} ${icon}`,
+    langSwitched: 'Switched to English 🌐',
   },
 };
 
