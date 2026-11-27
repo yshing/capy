@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { globalToonUniforms, createAnimeSky } from './toonShader.js';
 import { createCapybara } from './capybara.js';
 import { createOnsenEnvironment } from './environment.js';
+import { TRANSLATIONS, detectInitialLanguage, saveLanguage } from './i18n.js';
 
 // === 場景與渲染器初始化 ===
 const container = document.getElementById('canvas-container');
@@ -117,7 +118,6 @@ function spawnReactionParticles(origin, count = 6) {
 // === 三種時段光影預設（晨光 / 夕陽 / 星夜）===
 const TIME_PRESETS = [
   {
-    name: '晨光溫泉',
     icon: '☀️',
     lightDir: new THREE.Vector3(0.55, 0.82, 0.55).normalize(),
     lightColor: new THREE.Color('#fffaf0'),
@@ -134,7 +134,6 @@ const TIME_PRESETS = [
     lanternGlow: 0.15,
   },
   {
-    name: '夕陽黃昏',
     icon: '🌇',
     lightDir: new THREE.Vector3(-0.78, 0.36, -0.52).normalize(),
     lightColor: new THREE.Color('#ffc48f'),
@@ -151,7 +150,6 @@ const TIME_PRESETS = [
     lanternGlow: 0.65,
   },
   {
-    name: '星夜溫泉',
     icon: '🌙',
     lightDir: new THREE.Vector3(0.45, 0.72, -0.55).normalize(),
     lightColor: new THREE.Color('#bfd2ff'),
@@ -169,7 +167,37 @@ const TIME_PRESETS = [
   },
 ];
 
-let currentPresetIndex = 0;
+/**
+ * 依訪客當地時間自動決定時段：
+ * 06:00–16:59 晨光溫泉 / 05:00–05:59 與 17:00–18:59 夕陽黃昏 / 19:00–04:59 星夜溫泉
+ */
+function getAutoTimePresetIndex() {
+  const hour = new Date().getHours();
+  if (hour >= 6 && hour < 17) return 0;
+  if ((hour >= 17 && hour < 19) || hour === 5) return 1;
+  return 2;
+}
+
+let currentPresetIndex = getAutoTimePresetIndex();
+
+function applyTimePresetImmediate(index) {
+  const target = TIME_PRESETS[index];
+  globalToonUniforms.uLightDir.value.copy(target.lightDir);
+  globalToonUniforms.uLightColor.value.copy(target.lightColor);
+  globalToonUniforms.uAmbientColor.value.copy(target.ambientColor);
+  globalToonUniforms.uRimColor.value.copy(target.rimColor);
+  globalToonUniforms.uOutlineColor.value.copy(target.outlineColor);
+
+  sky.material.uniforms.uTopColor.value.copy(target.skyTop);
+  sky.material.uniforms.uMidColor.value.copy(target.skyMid);
+  sky.material.uniforms.uHorizonColor.value.copy(target.skyHorizon);
+  sky.material.uniforms.uSunColor.value.copy(target.sunColor);
+  sky.material.uniforms.uStarIntensity.value = target.starIntensity;
+
+  environment.waterMat.uniforms.uShallowColor.value.copy(target.waterShallow);
+  environment.waterMat.uniforms.uDeepColor.value.copy(target.waterDeep);
+  environment.lanternGlowMat.uniforms.uEmissiveStrength.value = target.lanternGlow;
+}
 
 function lerpTimePreset(dt) {
   const target = TIME_PRESETS[currentPresetIndex];
@@ -193,6 +221,68 @@ function lerpTimePreset(dt) {
   environment.lanternGlowMat.uniforms.uEmissiveStrength.value +=
     (target.lanternGlow - environment.lanternGlowMat.uniforms.uEmissiveStrength.value) * speed;
 }
+
+// 立即套用當地時段光影，避免開站瞬間閃爍
+applyTimePresetImmediate(currentPresetIndex);
+
+// === 多語言（中／英自動偵測與切換）===
+let currentLang = detectInitialLanguage();
+
+const controlDockEl = document.getElementById('control-dock');
+const petBtn = document.getElementById('btn-pet');
+const petLabelEl = document.getElementById('pet-label');
+const timeBtn = document.getElementById('btn-time');
+const timeIconEl = document.getElementById('time-icon');
+const timeLabelEl = document.getElementById('time-label');
+const petalsBtn = document.getElementById('btn-petals');
+const petalsLabelEl = document.getElementById('petals-label');
+const soundBtn = document.getElementById('btn-sound');
+const soundIconEl = document.getElementById('sound-icon');
+const soundLabelEl = document.getElementById('sound-label');
+const langBtn = document.getElementById('btn-lang');
+const langLabelEl = document.getElementById('lang-label');
+const toggleUiBtn = document.getElementById('btn-toggle-ui');
+const loadingTextEl = document.getElementById('loading-text');
+
+function t() {
+  return TRANSLATIONS[currentLang];
+}
+
+function updateToggleUiLabel() {
+  const hidden = document.body.classList.contains('ui-hidden');
+  toggleUiBtn.textContent = hidden ? t().showUi : t().hideUi;
+}
+
+function updateTimeButtonLabel() {
+  const preset = TIME_PRESETS[currentPresetIndex];
+  timeIconEl.textContent = preset.icon;
+  timeLabelEl.textContent = t().timeNames[currentPresetIndex];
+}
+
+function applyLanguage(lang) {
+  currentLang = lang;
+  const dict = t();
+  document.documentElement.lang = dict.htmlLang;
+  document.title = dict.pageTitle;
+
+  controlDockEl.setAttribute('aria-label', dict.navAria);
+  petBtn.title = dict.petTitle;
+  petLabelEl.textContent = dict.petBtn;
+  timeBtn.title = dict.timeTitle;
+  petalsBtn.title = dict.petalsTitle;
+  petalsLabelEl.textContent = dict.petalsBtn;
+  soundBtn.title = dict.soundTitle;
+  soundLabelEl.textContent = dict.soundBtn;
+  langBtn.title = dict.langTitle;
+  langLabelEl.textContent = dict.langBtn;
+  toggleUiBtn.title = dict.toggleUiTitle;
+  loadingTextEl.textContent = dict.loadingText;
+
+  updateTimeButtonLabel();
+  updateToggleUiLabel();
+}
+
+applyLanguage(currentLang);
 
 // === 溫柔療癒 Web Audio 合成音效 ===
 let soundEnabled = true;
@@ -236,14 +326,6 @@ function playChime(type = 'pet') {
 const toastEl = document.getElementById('mood-toast');
 let toastTimeout = null;
 
-const PET_MESSAGES = [
-  '卡皮巴拉覺得很舒服～ ♥',
-  '情緒穩定度 +100% ✨',
-  '好溫暖的柚子溫泉呀 ♨️',
-  '卡皮巴拉開心地瞇起眼睛 ♪',
-  '軟綿綿的好好摸 💛',
-];
-
 function showToast(text) {
   toastEl.textContent = text;
   toastEl.classList.add('visible');
@@ -258,26 +340,22 @@ function petCapybara() {
   capybara.triggerPetReaction();
   spawnReactionParticles(new THREE.Vector3(-0.18, 1.0, 0.35), 7);
   playChime('pet');
-  const msg = PET_MESSAGES[Math.floor(Math.random() * PET_MESSAGES.length)];
-  showToast(msg);
+  const msgs = t().petMessages;
+  showToast(msgs[Math.floor(Math.random() * msgs.length)]);
 }
 
 function petBabyCapybara() {
   babyCapybara.triggerPetReaction();
   spawnReactionParticles(new THREE.Vector3(1.18, 0.55, 0.72), 5);
   playChime('baby');
-  showToast('小卡皮巴拉寶寶開心地搖搖耳朵～ ♥');
+  showToast(t().babyPetMessage);
 }
 
-function handleStackYuzu(targetCapy, origin, nameLabel = '卡皮巴拉') {
+function handleStackYuzu(targetCapy, origin, isBaby = false) {
   const { count, overflowed } = targetCapy.stackYuzu();
   spawnReactionParticles(origin, 4);
   playChime('yuzu');
-  if (overflowed) {
-    showToast(`${nameLabel}頭上的柚子疊太高掉進溫泉啦！重新疊起 🍊`);
-  } else {
-    showToast(`${nameLabel}頭頂成功疊了 ${count} 顆柚子！平衡感滿分 🍊`);
-  }
+  showToast(overflowed ? t().yuzuOverflow(isBaby) : t().yuzuStack(isBaby, count));
 }
 
 // === 滑鼠點擊與懸停光線投射 ===
@@ -319,12 +397,12 @@ renderer.domElement.addEventListener('pointerup', (e) => {
 
   // 優先偵測點擊頭頂柚子（觸發疊柚子）
   if (raycaster.intersectObjects(capybara.yuzuHitTargets, false).length > 0) {
-    handleStackYuzu(capybara, new THREE.Vector3(-0.18, 1.4, 0.4), '卡皮巴拉');
+    handleStackYuzu(capybara, new THREE.Vector3(-0.18, 1.4, 0.4), false);
     return;
   }
 
   if (raycaster.intersectObjects(babyCapybara.yuzuHitTargets, false).length > 0) {
-    handleStackYuzu(babyCapybara, new THREE.Vector3(1.18, 0.85, 0.72), '小卡皮巴拉');
+    handleStackYuzu(babyCapybara, new THREE.Vector3(1.18, 0.85, 0.72), true);
     return;
   }
 
@@ -343,36 +421,30 @@ renderer.domElement.addEventListener('pointerup', (e) => {
     const idx = yuzuHits[0].object.userData.floatingIndex;
     environment.bounceFloatingYuzu(idx);
     playChime('splash');
-    showToast('噗通！柚子在溫泉裡彈了一下 🍊');
+    showToast(t().floatingYuzuSplash);
   }
 });
 
 // === UI 按鈕事件 ===
 let showPetals = true;
 
-document.getElementById('btn-pet').addEventListener('click', () => {
+petBtn.addEventListener('click', () => {
   petCapybara();
   babyCapybara.triggerPetReaction();
 });
 
-const timeIconEl = document.getElementById('time-icon');
-const timeLabelEl = document.getElementById('time-label');
-document.getElementById('btn-time').addEventListener('click', () => {
+timeBtn.addEventListener('click', () => {
   currentPresetIndex = (currentPresetIndex + 1) % TIME_PRESETS.length;
+  updateTimeButtonLabel();
   const preset = TIME_PRESETS[currentPresetIndex];
-  timeIconEl.textContent = preset.icon;
-  timeLabelEl.textContent = preset.name;
-  showToast(`已切換至「${preset.name}」${preset.icon}`);
+  showToast(t().timeSwitched(t().timeNames[currentPresetIndex], preset.icon));
 });
 
-const petalsBtn = document.getElementById('btn-petals');
 petalsBtn.addEventListener('click', () => {
   showPetals = !showPetals;
   petalsBtn.classList.toggle('active', showPetals);
 });
 
-const soundBtn = document.getElementById('btn-sound');
-const soundIconEl = document.getElementById('sound-icon');
 soundBtn.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
   soundIconEl.textContent = soundEnabled ? '🔊' : '🔇';
@@ -380,10 +452,15 @@ soundBtn.addEventListener('click', () => {
   if (soundEnabled) playChime('pet');
 });
 
-const toggleUiBtn = document.getElementById('btn-toggle-ui');
+langBtn.addEventListener('click', () => {
+  const nextLang = currentLang === 'zh' ? 'en' : 'zh';
+  saveLanguage(nextLang);
+  applyLanguage(nextLang);
+});
+
 toggleUiBtn.addEventListener('click', () => {
-  const hidden = document.body.classList.toggle('ui-hidden');
-  toggleUiBtn.textContent = hidden ? '👁️ 顯示介面' : '👁️ 隱藏介面';
+  document.body.classList.toggle('ui-hidden');
+  updateToggleUiLabel();
 });
 
 // === 視窗縮放 ===
